@@ -1,8 +1,6 @@
-import time
-
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import min, max, avg, sum, count
+from pyspark.sql.functions import min, max, avg, sum
 
 import src.shared.transform.geolife_transformer as transformer
 from src.jobs.base import BaseJob
@@ -10,33 +8,45 @@ from src.shared.extract import geolife_extractor as extractor
 
 
 class DailyStatisticsJob(BaseJob):
-    def __init__(self, input_dir: str, output_dir: str, write_intermediate: bool = False):
-        super().__init__(input_dir, output_dir, write_intermediate)
+    def __init__(self, input_dir: str, output_dir: str, debug: bool = False):
+        super().__init__(input_dir, output_dir, debug)
 
     def run_job(self):
         conf = SparkConf(loadDefaults=True)
         spark = SparkSession.builder.appName(self._job_name).config(conf=conf).getOrCreate()
 
-        start_time = time.time()
-
+        print("Reading dataset")
         df = extractor.read_trajectories_with_labels(spark, self._input_dir)
-        self._write_intermediate_to_csv(df, "dataset")
+        self._show_debug(df)
+        self._write_to_csv_debug(df, "dataset")
 
+        print("Calculating partial sums")
         df = transformer.calculate_distance_and_duration_per_segment(df)
-        self._write_intermediate_to_csv(df, "partitioned")
+        self._show_debug(df)
+        self._write_to_csv_debug(df, "partitioned")
 
-        final_df = self.__calculate_daily_statistics(df)
+        print("Calculating daily values")
+        values_per_day = self.__calculate_daily_values(df)
+        self._show_debug(values_per_day)
+        self._write_to_csv_debug(values_per_day, "daily_values")
+
+        print("Calculating final statistics")
+        final_df = self.__calculate_daily_statistics(values_per_day)
+        self._show_debug(final_df)
         self._write_to_csv(final_df, "daily_statistics")
 
-        print(f"Execution time {time.time() - start_time}s")
         spark.stop()
 
     @staticmethod
-    def __calculate_daily_statistics(df: DataFrame):
+    def __calculate_daily_values(df: DataFrame):
         df = df.groupBy(["user_id", "date", "label"]) \
             .agg(sum("dist_part_km").alias("daily_distance_km"),
                  sum("time_part_h").alias("daily_duration_h"))
 
+        return df
+
+    @staticmethod
+    def __calculate_daily_statistics(df: DataFrame):
         df = df.groupBy(["user_id", "label"]) \
             .agg(max("daily_distance_km").alias("max_daily_distance_km"),
                  min("daily_distance_km").alias("min_daily_distance_km"),

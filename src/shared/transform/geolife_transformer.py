@@ -26,8 +26,7 @@ def calculate_distance_and_duration_per_segment(df: DataFrame) -> DataFrame:
 
     # finally, we have all the information to calculate the distance and time
     df = df.select(df["*"],
-                   utils.dist_in_km(df.longitude, df.latitude, df.next_longitude, df.next_latitude).alias(
-                       "dist_part_km"),
+                   utils.dist_in_km(df.longitude, df.latitude, df.next_longitude, df.next_latitude).alias("dist_part_km"),
                    utils.datediff_in_hours(df.datetime, df.next_datetime).alias("time_part_h"))
 
     valid_distance = (df.dist_part_km.isNotNull() & (~isnan(df.dist_part_km)))

@@ -10,8 +10,8 @@ from src.shared.extract import geolife_extractor as extractor
 
 
 class TripStatisticsJob(BaseJob):
-    def __init__(self, input_dir: str, output_dir: str, write_intermediate: bool = False):
-        super().__init__(input_dir, output_dir, write_intermediate)
+    def __init__(self, input_dir: str, output_dir: str, debug: bool = False):
+        super().__init__(input_dir, output_dir, debug)
 
     def run_job(self):
         start_time = time.time()
@@ -19,17 +19,23 @@ class TripStatisticsJob(BaseJob):
         conf = SparkConf(loadDefaults=True)
         spark = SparkSession.builder.appName(self._job_name).config(conf=conf).getOrCreate()
 
+        print("Reading dataset")
         df = extractor.read_trajectories_with_labels(spark, self._input_dir)
-        self._write_intermediate_to_csv(df, "dataset")
+        self._write_to_csv_debug(df, "dataset")
+        self._show_debug(df)
 
         df = transformer.calculate_distance_and_duration_per_segment(df)
-        self._write_intermediate_to_csv(df, "partitioned")
+        self._write_to_csv_debug(df, "partitioned")
+        self._show_debug(df)
 
         df_values = self.__calculate_individual_trip_values(df)
+        df_values.cache()
         self._write_to_csv(df_values, "trip_values")
+        self._show_debug(df)
 
         df_statistics = self.__calculate_individual_trip_statistics(df_values)
         self._write_to_csv(df_statistics, "trip_statistics")
+        self._show_debug(df)
 
         spark.stop()
         print(f"Execution time {time.time() - start_time}s")
