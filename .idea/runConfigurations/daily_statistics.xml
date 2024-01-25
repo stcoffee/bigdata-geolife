@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="daily-statistics" type="PythonConfigurationType" factoryName="Python">
+  <configuration default="false" name="daily_statistics" type="PythonConfigurationType" factoryName="Python">
     <module name="GeoLife" />
     <option name="ENV_FILES" value="" />
     <option name="INTERPRETER_OPTIONS" value="" />

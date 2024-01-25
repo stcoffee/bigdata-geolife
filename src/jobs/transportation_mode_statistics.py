@@ -1,5 +1,3 @@
-import time
-
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import min, max, avg, sum, count
@@ -9,13 +7,11 @@ from src.jobs.base import BaseJob
 from src.shared.extract import geolife_extractor as extractor
 
 
-class TripStatisticsJob(BaseJob):
+class TransportationStatisticsJob(BaseJob):
     def __init__(self, input_dir: str, output_dir: str, debug: bool = False):
         super().__init__(input_dir, output_dir, debug)
 
     def run_job(self):
-        start_time = time.time()
-
         conf = SparkConf(loadDefaults=True)
         spark = SparkSession.builder.appName(self._job_name).config(conf=conf).getOrCreate()
 
@@ -24,21 +20,22 @@ class TripStatisticsJob(BaseJob):
         self._write_to_csv_debug(df, "dataset")
         self._show_debug(df)
 
+        print("Calculating distance per segment")
         df = transformer.calculate_distance_and_duration_per_segment(df)
         self._write_to_csv_debug(df, "partitioned")
         self._show_debug(df)
 
+        print("Calculation statistics per trip")
         df_values = self.__calculate_individual_trip_values(df)
-        df_values.cache()
-        self._write_to_csv(df_values, "trip_values")
+        self._write_to_csv_debug(df_values, "trip_values")
         self._show_debug(df)
 
-        df_statistics = self.__calculate_individual_trip_statistics(df_values)
-        self._write_to_csv(df_statistics, "trip_statistics")
+        print("Calculation statistics per transportation mode")
+        df_statistics = self.__calculate_transportation_mode_statistics(df_values)
+        self._write_to_csv(df_statistics, "transportation_statistics")
         self._show_debug(df)
 
         spark.stop()
-        print(f"Execution time {time.time() - start_time}s")
 
     @staticmethod
     def __calculate_individual_trip_values(df: DataFrame):
@@ -50,7 +47,7 @@ class TripStatisticsJob(BaseJob):
         return df
 
     @staticmethod
-    def __calculate_individual_trip_statistics(df: DataFrame):
+    def __calculate_transportation_mode_statistics(df: DataFrame):
         df = df.groupBy(["user_id", "label"])\
             .agg(count("label_id").alias("number_of_trips"),
                  min("total_distance_km").alias("min_trip_km"),
