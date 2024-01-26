@@ -1,5 +1,6 @@
 from pyspark import SparkConf
-from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql import DataFrame
+from pyspark.sql import SparkSession
 from pyspark.sql.functions import min, max, avg, sum, count
 
 import src.shared.transform.geolife_transformer as transformer
@@ -20,30 +21,28 @@ class TransportationStatisticsJob(BaseJob):
         self._write_to_csv_debug(df, "dataset")
         self._show_debug(df)
 
-        print("Calculating distance per segment")
-        df = transformer.calculate_distance_and_duration_per_segment(df)
-        self._write_to_csv_debug(df, "partitioned")
+        print("Calculating partial sums")
+        df = transformer.calculate_partial_distances(df)
+        self._write_to_csv_debug(df, "partial_distances")
         self._show_debug(df)
 
-        print("Calculation statistics per trip")
-        df_values = self.__calculate_individual_trip_values(df)
-        self._write_to_csv_debug(df_values, "trip_values")
+        print("Calculating sums per trip")
+        df = self.__calculate_distances_per_trip(df)
+        self._write_to_csv_debug(df, "trip_distances")
         self._show_debug(df)
 
-        print("Calculation statistics per transportation mode")
-        df_statistics = self.__calculate_transportation_mode_statistics(df_values)
-        self._write_to_csv(df_statistics, "transportation_statistics")
+        print("Calculating statistics per transportation mode")
+        df = self.__calculate_transportation_mode_statistics(df)
+        self._write_to_csv(df, "transportation_statistics")
         self._show_debug(df)
 
         spark.stop()
 
     @staticmethod
-    def __calculate_individual_trip_values(df: DataFrame):
-        df = df.groupBy(["user_id", "date", "label", "label_id"]) \
+    def __calculate_distances_per_trip(df: DataFrame):
+        df = df.groupBy(["user_id", "label", "label_id"]) \
             .agg(sum("dist_part_km").alias("total_distance_km"),
-                 sum("time_part_h").alias("total_duration_h")) \
-            .sort(["user_id", "date", "label", "label_id"])
-
+                 sum("time_part_h").alias("total_duration_h"))
         return df
 
     @staticmethod

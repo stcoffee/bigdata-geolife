@@ -15,6 +15,7 @@ class TransportationModesJob(BaseJob):
 
         print("Reading dataset")
         df = extractor.read_labels_dataset(spark, self._input_dir)
+        df = extractor.filter_labels_bad_data(df)
         self._show_debug(df)
         self._write_to_csv_debug(df, "dataset")
 

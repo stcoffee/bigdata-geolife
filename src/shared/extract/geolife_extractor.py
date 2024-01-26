@@ -98,6 +98,18 @@ def join_trajectories_and_labels(df: DataFrame, dfl: DataFrame) -> DataFrame:
 
 
 def read_trajectories_with_labels(spark: SparkSession, input_dir: str) -> DataFrame:
+    """ returns schema
+    | -- user_id: string(nullable=false)\n
+    | -- trajectory_id: string(nullable=false)\n
+    | -- date: date(nullable=true)\n
+    | -- datetime: timestamp(nullable=true)\n
+    | -- latitude: double(nullable=true)\n
+    | -- longitude: double(nullable=true)\n
+    | -- label_id: long(nullable=false)\n
+    | -- start: timestamp(nullable=true)\n
+    | -- end: timestamp(nullable=true)\n
+    | -- label: string(nullable=true)\n
+    """
     df = read_trajectory_dataset(spark, input_dir)
     df = filter_trajectory_bad_data(df)
 

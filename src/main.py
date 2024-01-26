@@ -2,7 +2,7 @@ import argparse
 import time
 
 from src.jobs.transportation_mode_statistics import TransportationStatisticsJob
-from src.jobs.daily_statistics_job import DailyStatisticsJob
+from src.jobs.daily_statistics import DailyStatisticsJob
 from src.jobs.transportation_modes import TransportationModesJob
 
 
